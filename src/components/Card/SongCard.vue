@@ -28,7 +28,7 @@
           @update:show="localCover"
         />
         <!-- 信息 -->
-        <div class="info">
+        <n-flex size="small" class="info" vertical>
           <!-- 名称 -->
           <div class="name">
             <n-ellipsis
@@ -39,30 +39,40 @@
               }"
               class="name-text"
             >
-              {{ song?.name || "未知曲目" }}
+              {{ settingStore.hideLyricBrackets ? removeBrackets(song?.name) : (song?.name || "未知曲目") }}
+              <n-text v-if="song.alia?.length && !settingStore.hideLyricBrackets" class="alia" depth="3"> ({{ song.alia }}) </n-text>
             </n-ellipsis>
+          </div>
+          <n-flex :size="4" :wrap="false" class="desc" align="center">
             <!-- 音质 -->
             <n-tag
-              v-if="song?.path && song?.quality"
-              :bordered="false"
-              :type="song.quality === 'Hi-Res' ? 'warning' : 'info'"
+              v-if="song?.quality && settingStore.showSongQuality"
+              :type="qualityColor"
               class="quality"
               round
             >
               {{ song.quality }}
             </n-tag>
+            <!-- 原唱翻唱 -->
+            <template v-if="settingStore.showSongOriginalTag">
+              <n-tag v-if="song.originCoverType === 1" :bordered="false" type="primary" round>
+                原
+              </n-tag>
+              <n-tag v-if="song.originCoverType === 2" :bordered="false" type="info" round>
+                翻唱
+              </n-tag>
+            </template>
             <!-- 特权 -->
-            <n-tag v-if="song.originCoverType === 1" :bordered="false" type="primary" round>
-              原
-            </n-tag>
-            <n-tag v-if="song.free === 1" :bordered="false" type="error" round> VIP </n-tag>
-            <n-tag v-if="song.free === 4" :bordered="false" type="error" round> EP </n-tag>
-            <!-- 云盘 -->
-            <n-tag v-if="song?.pc" :bordered="false" class="cloud" type="info" round>
-              <template #icon>
-                <SvgIcon name="Cloud" />
-              </template>
-            </n-tag>
+            <template v-if="settingStore.showSongPrivilegeTag">
+              <n-tag v-if="song.free === 1" :bordered="false" type="error" round> VIP </n-tag>
+              <n-tag v-if="song.free === 4" :bordered="false" type="error" round> EP </n-tag>
+              <!-- 云盘 -->
+              <n-tag v-if="song?.pc" :bordered="false" class="cloud" type="info" round>
+                <template #icon>
+                  <SvgIcon name="Cloud" />
+                </template>
+              </n-tag>
+            </template>
             <!-- MV -->
             <n-tag
               v-if="song?.mv"
@@ -79,30 +89,28 @@
             >
               MV
             </n-tag>
-          </div>
-          <!-- 歌手 -->
-          <div v-if="Array.isArray(song.artists)" class="artists text-hidden">
-            <n-text
-              v-for="ar in song.artists"
-              :key="ar.id"
-              class="ar"
-              @click="openJumpArtist(song.artists)"
-            >
-              {{ ar.name }}
-            </n-text>
-          </div>
-          <div v-else-if="song.type === 'radio'" class="artists">
-            <n-text class="ar"> 电台节目 </n-text>
-          </div>
-          <div v-else class="artists text-hidden" @click="openJumpArtist(song.artists)">
-            <n-text class="ar"> {{ song.artists || "未知艺术家" }} </n-text>
-          </div>
-          <!-- 别名 -->
-          <n-text v-if="song.alia" class="alia text-hidden" depth="3">{{ song.alia }}</n-text>
-        </div>
+            <!-- 歌手 -->
+            <div v-if="Array.isArray(song.artists)" class="artists">
+              <n-text
+                v-for="ar in song.artists"
+                :key="ar.id"
+                class="ar"
+                @click="openJumpArtist(song.artists, ar.id)"
+              >
+                {{ ar.name }}
+              </n-text>
+            </div>
+            <div v-else-if="song.type === 'radio'" class="artists">
+              <n-text class="ar"> 电台节目 </n-text>
+            </div>
+            <div v-else class="artists" @click="openJumpArtist(song.artists)">
+              <n-text class="ar"> {{ song.artists || "未知艺术家" }} </n-text>
+            </div>
+          </n-flex>
+        </n-flex>
       </div>
       <!-- 专辑 -->
-      <div v-if="song.type !== 'radio' && !hiddenAlbum" class="album text-hidden">
+      <div v-if="song.type !== 'radio' && !hiddenAlbum && !isSmallScreen" class="album text-hidden">
         <n-text
           v-if="isObject(song.album)"
           class="album-text"
@@ -123,24 +131,27 @@
       <div v-if="song.type !== 'radio'" class="actions" @click.stop @dblclick.stop>
         <!-- 喜欢歌曲 -->
         <SvgIcon
+          v-if="!isSmallScreen"
           :name="dataStore.isLikeSong(song.id) ? 'Favorite' : 'FavoriteBorder'"
           :size="20"
           @click.stop="toLikeSong(song, !dataStore.isLikeSong(song.id))"
           @delclick.stop
         />
+        <!-- 移动端菜单 -->
+        <SvgIcon v-else name="More" :size="20" @click.stop="emit('show-menu', $event)" />
       </div>
       <!-- 更新日期 -->
-      <n-text v-if="song.type === 'radio'" class="meta date" depth="3">
+      <n-text v-if="song.type === 'radio' && !isSmallScreen" class="meta date" depth="3">
         {{ formatTimestamp(song.updateTime) }}
       </n-text>
       <!-- 播放量 -->
-      <n-text v-if="song.type === 'radio'" class="meta" depth="3">
+      <n-text v-if="song.type === 'radio' && !isSmallScreen" class="meta" depth="3">
         {{ formatNumber(song.playCount || 0) }}
       </n-text>
       <!-- 时长 -->
-      <n-text class="meta" depth="3">{{ msToTime(song.duration) }}</n-text>
+      <n-text v-if="!isSmallScreen" class="meta" depth="3">{{ msToTime(song.duration) }}</n-text>
       <!-- 大小 -->
-      <n-text v-if="song.path && song.size && !hiddenSize" class="meta size" depth="3">
+      <n-text v-if="song.size && !hiddenSize && !isSmallScreen" class="meta size" depth="3">
         {{ song.size }}M
       </n-text>
     </div>
@@ -148,15 +159,18 @@
 </template>
 
 <script setup lang="ts">
-import type { SongType } from "@/types/main";
-import { useStatusStore, useMusicStore, useDataStore } from "@/stores";
-import { formatNumber, isElectron } from "@/utils/helper";
+import { QualityType, type SongType } from "@/types/main";
+import { useStatusStore, useMusicStore, useDataStore, useSettingStore } from "@/stores";
+import { formatNumber } from "@/utils/helper";
 import { openJumpArtist } from "@/utils/modal";
+import { removeBrackets } from "@/utils/format";
 import { toLikeSong } from "@/utils/auth";
 import { isObject } from "lodash-es";
 import { formatTimestamp, msToTime } from "@/utils/time";
-import player from "@/utils/player";
-import blob from "@/utils/blob";
+import { usePlayerController } from "@/core/player/PlayerController";
+import { isElectron } from "@/utils/env";
+import { useBlobURLManager } from "@/core/resource/BlobURLManager";
+import { useMobile } from "@/composables/useMobile";
 
 const props = defineProps<{
   // 歌曲
@@ -169,30 +183,65 @@ const props = defineProps<{
   hiddenSize?: boolean;
 }>();
 
+const emit = defineEmits<{
+  "show-menu": [event: MouseEvent];
+}>();
+
+const { isSmallScreen } = useMobile();
 const router = useRouter();
 const dataStore = useDataStore();
 const musicStore = useMusicStore();
 const statusStore = useStatusStore();
+const settingStore = useSettingStore();
+
+const player = usePlayerController();
+const blobURLManager = useBlobURLManager();
 
 // 歌曲数据
 const song = toRef(props, "song");
 
+// 音质颜色
+const qualityColor = computed(() => {
+  if (song.value.quality === QualityType.HiRes) return "warning";
+  if (song.value.quality === QualityType.SQ) return "warning";
+  if (song.value.quality === QualityType.HQ) return "info";
+  return "primary";
+});
+
 // 加载本地歌曲封面
 const localCover = async (show: boolean) => {
-  if (!isElectron || !show || !song.value.path) return;
-  if (song.value.cover || song.value.cover === "/images/song.jpg?assest") return;
+  if (!isElectron || !show) return;
+  // 本地路径
+  const path = song.value.path;
+  if (!path || song.value.type === "streaming") return;
+  // 当前封面
+  const currentCover = song.value.cover;
+  // 直接复用
+  if (
+    currentCover &&
+    currentCover !== "/images/song.jpg?asset" &&
+    !currentCover.startsWith("blob:")
+  ) {
+    return;
+  }
+  // 缓存生效
+  if (blobURLManager.hasBlobURL(path)) return;
+  // 请求路径
+  const requestPath = path;
   // 获取封面
-  const coverData = await window.electron.ipcRenderer.invoke("get-music-cover", song.value.path);
-  if (!coverData) return;
+  const coverData = await window.electron.ipcRenderer.invoke("get-music-cover", requestPath);
+  if (song.value.path !== requestPath || !coverData) return;
   const { data, format } = coverData;
-  const blobURL = blob.createBlobURL(data, format, song.value.path);
-  if (blobURL) song.value.cover = blobURL;
+  const blobURL = blobURLManager.createBlobURL(data, format, requestPath);
+  if (blobURL && song.value.path === requestPath) {
+    song.value.cover = blobURL;
+  }
 };
 </script>
 
 <style lang="scss" scoped>
 .song-card {
-  height: 100%;
+  height: 90px;
   cursor: pointer;
   .song-content {
     display: flex;
@@ -204,10 +253,10 @@ const localCover = async (show: boolean) => {
     border-radius: 12px;
     border: 2px solid rgba(var(--primary), 0.12);
     background-color: var(--surface-container-hex);
-    // transition:
-    //   transform 0.1s,
-    //   background-color 0.3s var(--n-bezier),
-    //   border-color 0.3s var(--n-bezier);
+    transition:
+      transform 0.1s,
+      background-color 0.3s var(--n-bezier),
+      border-color 0.3s var(--n-bezier);
     &.play {
       border-color: rgba(var(--primary), 0.58);
       background-color: rgba(var(--primary), 0.28);
@@ -272,6 +321,7 @@ const localCover = async (show: boolean) => {
   }
   .title {
     flex: 1;
+    min-width: 0;
     display: flex;
     align-items: center;
     padding: 4px 20px 4px 0;
@@ -287,21 +337,22 @@ const localCover = async (show: boolean) => {
       overflow: hidden;
     }
     .info {
-      display: flex;
-      flex-direction: column;
+      min-width: 0;
       .name {
         display: flex;
         flex-direction: row;
         align-items: center;
+        line-height: normal;
         font-size: 16px;
-        :deep(.name-text) {
-          margin-right: 6px;
-        }
+      }
+      .desc {
+        min-width: 0;
+        margin-top: 2px;
+        font-size: 13px;
         .n-tag {
-          --n-height: 20px;
-          font-size: 12px;
+          --n-height: 18px;
+          font-size: 10px;
           cursor: pointer;
-          margin-right: 6px;
           pointer-events: none;
           &:last-child {
             margin-right: 0;
@@ -328,10 +379,13 @@ const localCover = async (show: boolean) => {
         }
       }
       .artists {
-        margin-top: 2px;
-        font-size: 13px;
+        flex: 1;
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
         .ar {
-          display: inline-flex;
+          display: inline;
           transition: opacity 0.3s;
           opacity: 0.6;
           cursor: pointer;
@@ -349,11 +403,6 @@ const localCover = async (show: boolean) => {
           }
         }
       }
-      .alia {
-        margin-top: 2px;
-        font-size: 12px;
-        opacity: 0.8;
-      }
     }
     .sort {
       margin-left: 6px;
@@ -367,6 +416,7 @@ const localCover = async (show: boolean) => {
   }
   .album {
     flex: 1;
+    min-width: 0;
     line-clamp: 2;
     -webkit-line-clamp: 2;
     padding-right: 20px;
@@ -382,6 +432,7 @@ const localCover = async (show: boolean) => {
     justify-content: center;
     width: 40px;
     .n-icon {
+      color: var(--primary-hex);
       transition: transform 0.3s;
       cursor: pointer;
       &:hover {

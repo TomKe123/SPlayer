@@ -11,7 +11,7 @@
         <n-image v-if="cover" :src="cover" preview-disabled lazy @load="coverLoaded">
           <template #placeholder>
             <div class="cover-loading">
-              <img src="/images/song.jpg?assest" class="loading-img" alt="loading-img" />
+              <img src="/images/song.jpg?asset" class="loading-img" alt="loading-img" />
             </div>
           </template>
         </n-image>
@@ -26,7 +26,7 @@
           >
             <template #placeholder>
               <div class="cover-loading">
-                <img src="/images/song.jpg?assest" class="loading-img" alt="loading-img" />
+                <img src="/images/song.jpg?asset" class="loading-img" alt="loading-img" />
               </div>
             </template>
           </n-image>
@@ -36,9 +36,13 @@
       </div>
       <!-- 信息 -->
       <div v-if="size === 'small'" class="info">
-        <n-text v-if="typeof title === 'string'" class="name">{{ title }}</n-text>
+        <n-text v-if="typeof title === 'string'" class="name text-hidden">
+          {{ title }}
+        </n-text>
         <component v-else :is="title" />
-        <n-text v-if="description" depth="3" class="desc">{{ description }}</n-text>
+        <n-text v-if="description" depth="3" class="desc text-hidden">
+          {{ description }}
+        </n-text>
       </div>
       <div v-else class="info">
         <slot name="info" />
@@ -51,10 +55,11 @@
 import type { SongType } from "@/types/main";
 import { coverLoaded } from "@/utils/helper";
 import { sampleSize } from "lodash-es";
+import { VNodeChild } from "vue";
 
 const props = defineProps<{
   size: "normal" | "small";
-  title: string | VNode;
+  title: string | VNodeChild;
   data?: SongType[];
   description?: string;
   loading?: boolean;

@@ -1,8 +1,8 @@
 <template>
   <div class="home-online">
     <!-- 登录功能 -->
-    <n-grid v-if="isLogin()" :cols="2" :x-gap="20" class="main-rec">
-      <n-gi>
+    <div v-if="isLogin()" class="main-rec">
+      <div class="main-rec-grid">
         <n-flex :size="20" class="rec-list" justify="space-between" vertical>
           <!-- 每日推荐 -->
           <SongListCard
@@ -23,14 +23,12 @@
             @click="router.push({ name: 'like-songs' })"
           />
         </n-flex>
-      </n-gi>
-      <!-- 私人FM -->
-      <n-gi>
+        <!-- 私人FM -->
         <PersonalFM />
-      </n-gi>
-    </n-grid>
+      </div>
+    </div>
     <!-- 公共推荐 -->
-    <div v-for="(item, index) in recData" :key="index" class="rec-public">
+    <div v-for="(item, index) in sortedRecData" :key="index" class="rec-public">
       <n-flex
         class="title"
         align="center"
@@ -44,7 +42,7 @@
       </n-flex>
       <!-- 列表 -->
       <ArtistList v-if="item.type === 'artist'" :data="item.list" :loading="true" />
-      <CoverList v-else :data="item.list" :type="item.type" :cols="item.cols" :loading="true" />
+      <CoverList v-else :data="item.list" :type="item.type" :loading="true" />
     </div>
   </div>
 </template>
@@ -52,7 +50,7 @@
 <script setup lang="ts">
 import type { ArtistType, CoverType } from "@/types/main";
 import { NText } from "naive-ui";
-import { useDataStore, useMusicStore } from "@/stores";
+import { useDataStore, useMusicStore, useSettingStore } from "@/stores";
 import { newAlbumsAll, personalized, radarPlaylist, topArtists } from "@/api/rec";
 import { allMv } from "@/api/video";
 import { radioRecommend } from "@/api/radio";
@@ -62,26 +60,34 @@ import { sleep } from "@/utils/helper";
 import { isLogin } from "@/utils/auth";
 import SvgIcon from "@/components/Global/SvgIcon.vue";
 
-interface RecItemType {
+interface RecItemTypeBase {
   name: string;
-  list: ArtistType[] | CoverType[];
-  type: "playlist" | "artist" | "video" | "radio" | "album";
   path?: string;
-  cols?: string;
+}
+
+interface RecItemArtist extends RecItemTypeBase {
+  type: "artist";
+  list: ArtistType[];
+}
+
+interface RecItemCover extends RecItemTypeBase {
+  type: "playlist" | "video" | "radio" | "album";
+  list: CoverType[];
 }
 
 interface RecDataType {
-  playlist: RecItemType;
-  radar: RecItemType;
-  artist: RecItemType;
-  video: RecItemType;
-  radio: RecItemType;
-  album: RecItemType;
+  playlist: RecItemCover;
+  radar: RecItemCover;
+  artist: RecItemArtist;
+  video: RecItemCover;
+  radio: RecItemCover;
+  album: RecItemCover;
 }
 
 const router = useRouter();
 const dataStore = useDataStore();
 const musicStore = useMusicStore();
+const settingStore = useSettingStore();
 
 // 日推标题
 const dailySongsTitle = computed(() => {
@@ -91,7 +97,7 @@ const dailySongsTitle = computed(() => {
       h(SvgIcon, { name: "Calendar-Empty", size: 30, depth: 2 }),
       h(NText, null, () => day),
     ]),
-    h(NText, { class: "name" }, () => ["每日推荐"]),
+    h(NText, { class: "name text-hidden" }, () => ["每日推荐"]),
   ]);
 });
 
@@ -118,7 +124,6 @@ const recData = ref<RecDataType>({
     name: "推荐 MV",
     list: [] as CoverType[],
     type: "video",
-    cols: "2 600:2 800:3 900:4 1200:5 1400:6",
   },
   radio: {
     name: "推荐播客",
@@ -133,11 +138,24 @@ const recData = ref<RecDataType>({
   },
 });
 
+// 根据设置过滤和排序推荐数据
+const sortedRecData = computed(() => {
+  const sections = settingStore.homePageSections
+    .filter((section) => section.visible)
+    .sort((a, b) => a.order - b.order)
+    .map((section) => {
+      const key = section.key as keyof RecDataType;
+      return recData.value[key];
+    })
+    .filter((item) => item);
+  return sections;
+});
+
 // 获取全部推荐
 const getAllRecData = async () => {
   try {
-    // 延时 50ms
-    await sleep(50);
+    // 延时
+    await sleep(300);
 
     // 歌单
     try {
@@ -199,14 +217,20 @@ const getAllRecData = async () => {
   }
 };
 
+onActivated(getAllRecData);
+
 onMounted(() => {
   getAllRecData();
-  onActivated(getAllRecData);
 });
 </script>
 
 <style lang="scss" scoped>
 .main-rec {
+  .main-rec-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 20px;
+  }
   .date {
     display: flex;
     align-items: center;
@@ -231,10 +255,20 @@ onMounted(() => {
       font-weight: bold;
     }
   }
+  @media (max-width: 768px) {
+    .main-rec-grid {
+      grid-template-columns: repeat(1, 1fr);
+    }
+    .rec-list {
+      display: grid !important;
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
 }
 .title {
   margin-top: 28px;
   padding: 0 4px;
+  width: max-content;
   .n-h {
     margin: 0;
     display: flex;
