@@ -145,13 +145,15 @@ export const convertJellyfinSong = (
     name: item.Name,
     artists,
     album: item.Album || "未知专辑",
-    cover: getImageUrl(config, imageId, "Primary", 300, imageTag),
-    coverSize: {
-      s: getImageUrl(config, imageId, "Primary", 100, imageTag),
-      m: getImageUrl(config, imageId, "Primary", 300, imageTag),
-      l: getImageUrl(config, imageId, "Primary", 1024, imageTag),
-      xl: getImageUrl(config, imageId, "Primary", undefined, imageTag),
-    },
+    cover: imageTag ? getImageUrl(config, imageId, "Primary", 300, imageTag) : "",
+    coverSize: imageTag
+      ? {
+          s: getImageUrl(config, imageId, "Primary", 100, imageTag),
+          m: getImageUrl(config, imageId, "Primary", 300, imageTag),
+          l: getImageUrl(config, imageId, "Primary", 1024, imageTag),
+          xl: getImageUrl(config, imageId, "Primary", undefined, imageTag),
+        }
+      : undefined,
     duration: item.RunTimeTicks ? Math.floor(item.RunTimeTicks / 10000) : 0, // 转换为毫秒
     size: 0,
     free: 0,
@@ -179,13 +181,15 @@ export const convertJellyfinAlbum = (
     name: item.Name,
     artist: item.AlbumArtist || item.AlbumArtists?.[0]?.Name,
     artistId,
-    cover: getImageUrl(config, item.Id, "Primary", undefined, imageTag),
-    coverSize: {
-      s: getImageUrl(config, item.Id, "Primary", 100, imageTag),
-      m: getImageUrl(config, item.Id, "Primary", 300, imageTag),
-      l: getImageUrl(config, item.Id, "Primary", 1024, imageTag),
-      xl: getImageUrl(config, item.Id, "Primary", undefined, imageTag),
-    },
+    cover: imageTag ? getImageUrl(config, item.Id, "Primary", undefined, imageTag) : "",
+    coverSize: imageTag
+      ? {
+          s: getImageUrl(config, item.Id, "Primary", 100, imageTag),
+          m: getImageUrl(config, item.Id, "Primary", 300, imageTag),
+          l: getImageUrl(config, item.Id, "Primary", 1024, imageTag),
+          xl: getImageUrl(config, item.Id, "Primary", undefined, imageTag),
+        }
+      : undefined,
     songCount: item.SongCount || item.ChildCount,
     year: item.ProductionYear,
     serverId: config.id,
@@ -204,13 +208,15 @@ export const convertJellyfinArtist = (
   return {
     id: item.Id,
     name: item.Name,
-    cover: getImageUrl(config, item.Id, "Primary", undefined, imageTag),
-    coverSize: {
-      s: getImageUrl(config, item.Id, "Primary", 100, imageTag),
-      m: getImageUrl(config, item.Id, "Primary", 300, imageTag),
-      l: getImageUrl(config, item.Id, "Primary", 1024, imageTag),
-      xl: getImageUrl(config, item.Id, "Primary", undefined, imageTag),
-    },
+    cover: imageTag ? getImageUrl(config, item.Id, "Primary", undefined, imageTag) : "",
+    coverSize: imageTag
+      ? {
+          s: getImageUrl(config, item.Id, "Primary", 100, imageTag),
+          m: getImageUrl(config, item.Id, "Primary", 300, imageTag),
+          l: getImageUrl(config, item.Id, "Primary", 1024, imageTag),
+          xl: getImageUrl(config, item.Id, "Primary", undefined, imageTag),
+        }
+      : undefined,
     albumCount: item.ChildCount,
     serverId: config.id,
     serverType: config.type,
@@ -229,13 +235,15 @@ export const convertJellyfinPlaylist = (
     id: item.Id,
     name: item.Name,
     description: item.Overview,
-    cover: getImageUrl(config, item.Id, "Primary", undefined, imageTag),
-    coverSize: {
-      s: getImageUrl(config, item.Id, "Primary", 100, imageTag),
-      m: getImageUrl(config, item.Id, "Primary", 300, imageTag),
-      l: getImageUrl(config, item.Id, "Primary", 1024, imageTag),
-      xl: getImageUrl(config, item.Id, "Primary", undefined, imageTag),
-    },
+    cover: imageTag ? getImageUrl(config, item.Id, "Primary", undefined, imageTag) : "",
+    coverSize: imageTag
+      ? {
+          s: getImageUrl(config, item.Id, "Primary", 100, imageTag),
+          m: getImageUrl(config, item.Id, "Primary", 300, imageTag),
+          l: getImageUrl(config, item.Id, "Primary", 1024, imageTag),
+          xl: getImageUrl(config, item.Id, "Primary", undefined, imageTag),
+        }
+      : undefined,
     songCount: item.ChildCount,
     serverId: config.id,
     serverType: config.type,

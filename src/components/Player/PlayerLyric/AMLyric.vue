@@ -12,7 +12,9 @@
       ]"
       :style="{
         '--amll-lp-color': 'rgb(var(--main-cover-color, 239 239 239))',
-        '--amll-lp-hover-bg-color': 'rgba(var(--main-cover-color), 0.08)',
+        '--amll-lp-hover-bg-color': statusStore.playerMetaShow
+          ? 'rgba(var(--main-cover-color), 0.08)'
+          : 'transparent',
         '--amll-lyric-left-padding': settingStore.lyricAlignRight
           ? ''
           : `${settingStore.lyricHorizontalOffset}px`,
@@ -37,7 +39,10 @@
         :wordFadeWidth="settingStore.wordFadeWidth"
         :style="{
           '--display-count-down-show': settingStore.countDownShow ? 'flex' : 'none',
-          '--amll-lp-font-size': settingStore.lyricFontSize + 'px',
+          '--amll-lp-font-size': getFontSize(
+            settingStore.lyricFontSize,
+            settingStore.lyricFontSizeMode,
+          ),
           'font-weight': settingStore.lyricFontWeight,
           'font-family': settingStore.LyricFont !== 'follow' ? settingStore.LyricFont : '',
           ...lyricLangFontStyle(settingStore),
@@ -54,11 +59,9 @@ import { LyricLineMouseEvent, type LyricLine } from "@applemusic-like-lyrics/cor
 import { useMusicStore, useSettingStore, useStatusStore } from "@/stores";
 import { getLyricLanguage } from "@/utils/format";
 import { usePlayerController } from "@/core/player/PlayerController";
-
-// 此处cloneDeep 删除会暴毙 不要动
-
 import { cloneDeep } from "lodash-es";
-import { lyricLangFontStyle } from "@/utils/lyricFontConfig";
+import { lyricLangFontStyle } from "@/utils/lyric/lyricFontConfig";
+import { getFontSize } from "@/utils/style";
 
 defineProps({
   currentTime: {
@@ -78,47 +81,31 @@ const lyricPlayerRef = ref<any | null>(null);
 const amLyricsData = computed(() => {
   const { songLyric } = musicStore;
   if (!songLyric) return [];
-
   // 优先使用逐字歌词(YRC/TTML)
-  const useYrc = songLyric.yrcData?.length && settingStore.showYrc;
+  const useYrc = songLyric.yrcData?.length && settingStore.showWordLyrics;
   const lyrics = useYrc ? songLyric.yrcData : songLyric.lrcData;
-
   // 简单检查歌词有效性
   if (!Array.isArray(lyrics) || lyrics.length === 0) return [];
-
+  // 此处cloneDeep 删除会暴毙 不要动
   const clonedLyrics = cloneDeep(lyrics) as LyricLine[];
-
-  // 检查是否要不显示某一部分并删去
-  const showTran = settingStore.showTran;
-  const showRoma = settingStore.showRoma;
-  const showWordsRoma = settingStore.showWordsRoma;
-
-  if (!showTran || !showRoma || !showWordsRoma) {
-    clonedLyrics.forEach((line) => {
-      if (!showTran) line.translatedLyric = "";
-      if (!showRoma) line.romanLyric = "";
-      if (!showWordsRoma) line.words.forEach((word) => (word.romanWord = ""));
-    });
-  }
-
-
-
-  // 调换翻译与音译位置
-  if (settingStore.swapTranRoma) {
-    clonedLyrics.forEach((line) => {
+  // 处理歌词内容
+  const { showTran, showRoma, showWordsRoma, swapTranRoma, lyricAlignRight } = settingStore;
+  clonedLyrics.forEach((line) => {
+    // 处理显隐
+    if (!showTran) line.translatedLyric = "";
+    if (!showRoma) line.romanLyric = "";
+    if (!showWordsRoma) line.words?.forEach((word) => (word.romanWord = ""));
+    // 调换翻译与音译位置
+    if (swapTranRoma) {
       const temp = line.translatedLyric;
       line.translatedLyric = line.romanLyric;
       line.romanLyric = temp;
-    });
-  }
-
-  // 如果开启了歌词靠右，反转 isDuet
-  if (settingStore.lyricAlignRight) {
-    clonedLyrics.forEach((line) => {
+    }
+    // 处理对唱方向反转
+    if (lyricAlignRight) {
       line.isDuet = !line.isDuet;
-    });
-  }
-
+    }
+  });
   return clonedLyrics;
 });
 
@@ -184,8 +171,15 @@ watch(lyricPlayerRef, (player) => {
         display: var(--display-count-down-show);
       }
     }
-    @media (max-width: 500px) {
+    @media (max-width: 990px) {
+      padding: 0;
       margin-left: 0;
+      .amll-lyric-player {
+        > div {
+          padding-left: 20px;
+          padding-right: 20px;
+        }
+      }
     }
   }
 
@@ -218,41 +212,8 @@ watch(lyricPlayerRef, (player) => {
     }
   }
 
-  /* 对常见的“当前高亮行”类名应用加法混合模式，使其高亮更亮 */
-  :deep(.am-lyric .current),
-  :deep(.am-lyric .is-current),
-  :deep(.am-lyric .active),
-  :deep(.am-lyric .is-active),
-  :deep(.am-lyric .lyric-line.current),
-  :deep(.am-lyric .lyric-line.is-current) {
-    /* 使用加法混合，叠加会更亮 */
-    mix-blend-mode: plus-lighter;
-    /* 更亮的文字颜色（半透明白），便于加法叠加效果 */
-    color: rgba(255, 255, 255, 0.95);
-    /* 轻微发光，配合混合模式效果更自然 */
-    text-shadow: 0 2px 12px rgba(255, 255, 255, 0.06);
-    /* 告诉浏览器该元素可能会变化，优化渲染 */
-    will-change: transform, opacity, color;
-  }
-
-  /* 只对主歌词文本（非翻译/音译）启用混合，匹配带有 lang 属性的主元素 */
-  :deep(.am-lyric [lang]) {
-    /* 默认保持正常，但在高亮时会被上面的规则覆盖 */
-    -webkit-font-smoothing: antialiased;
-  }
-
-  /* 若浏览器不支持 plus-lighter，使用 supports 提供降级样式 */
-  @supports not (mix-blend-mode: plus-lighter) {
-    :deep(.am-lyric .current),
-    :deep(.am-lyric .is-current),
-    :deep(.am-lyric .active),
-    :deep(.am-lyric .is-active),
-    :deep(.am-lyric .lyric-line.current),
-    :deep(.am-lyric .lyric-line.is-current) {
-      /* 降级为更明显的颜色与阴影（非混合） */
-      color: #ffffff;
-      text-shadow: 0 4px 18px rgba(0, 0, 0, 0.35);
-    }
+  :deep(.am-lyric div[class*="lyricMainLine"] span) {
+    text-align: start;
   }
 
   :lang(ja) {

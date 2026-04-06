@@ -31,6 +31,8 @@ import { useStreamingStore } from "@/stores";
 import { some } from "lodash-es";
 import { usePlayerController } from "@/core/player/PlayerController";
 
+defineOptions({ inheritAttrs: false });
+
 const streamingStore = useStreamingStore();
 const player = usePlayerController();
 
@@ -94,13 +96,6 @@ watch(
     if (artistDom) artistDom.scrollIntoView({ behavior: "smooth", block: "center" });
   },
 );
-
-// 初始化加载
-onMounted(async () => {
-  if (streamingStore.isConnected.value && streamingStore.songs.value.length === 0) {
-    await streamingStore.fetchRandomSongs(200);
-  }
-});
 </script>
 
 <style lang="scss" scoped>
